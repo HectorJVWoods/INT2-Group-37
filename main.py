@@ -6,6 +6,10 @@ import torch.nn.functional as f
 from torch.optim import SGD  
 import torchvision
 
+transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+
 #Classes in the dataset as shown on https://www.cs.toronto.edu/~kriz/cifar.html
 classes = ('airplane', 'automobile', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
