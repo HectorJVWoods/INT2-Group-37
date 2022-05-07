@@ -44,17 +44,21 @@ test_loader = torch.utils.data.DataLoader(test_data,
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
+        self.layer1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.layer2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.layer3 = nn.Conv2d(in_channels=128,out_channels=256,kernel_size=3, padding=1) 
+        self.layer3 = nn.Conv2d(in_channels=64,out_channels=128,kernel_size=3, padding=1) 
         self.pool = nn.MaxPool2d(2, 2)
-        self.layer4 = nn.Conv2d(in_channels=256,out_channels=512,kernel_size=3,padding=1)
-        self.layer5 = nn.Linear(512 * 8 * 8, 128)
-        self.layer6 = nn.Linear(128, 64)
-        self.layer7 = nn.Linear(64, 10)
-        self.dropout = nn.Dropout(0.25)
+        self.layer4 = nn.Conv2d(in_channels=128,out_channels=256,kernel_size=3,padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.layer5 = nn.Conv2d(in_channels=256,out_channels = 512, kernel_size=3,padding=1)
+
+        
+        self.layer6 = nn.Linear(512 * 8 * 8, 128)
+        self.layer7 = nn.Linear(128, 64)
+        self.layer8 = nn.Linear(64, 10)
+        self.dropout = nn.Dropout(0.15)
 
     def forward(self, x):
         x = self.layer1(x)
@@ -62,18 +66,23 @@ class Net(nn.Module):
         x = self.pool(x)
         x = self.layer2(x)
         x = F.relu(x)
+        x = self.dropout(x)
         x = self.pool(x)
         x = self.layer3(x)
         x = F.relu(x)
+        x = self.dropout(x)
         x = self.layer4(x)
         x = F.relu(x)
-        x = torch.flatten(x, 1)  # flatten all dimensions except batch
+        x = self.dropout(x)
         x = self.layer5(x)
         x = F.relu(x)
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = self.layer6(x)
         x = F.relu(x)
-        x = self.dropout(x)
         x = self.layer7(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        x = self.layer8(x)
         return x
 
 def train(epochs, net, test_every_epoch, loss_fn, optimizer):
@@ -113,6 +122,8 @@ def train_for_n_minutes(n, net, loss_fn, optimizer):
     training_error = []
     test_error = []
     while end_time - time.time() > 0:
+        if epoch >= 20:
+            optimizer = Adam(net.parameters(), lr=learning_rate/10)
         print(f"Time elapsed: {((time.time() - start_time) / 60):3f}/{((end_time - start_time) / 60):3f} "
               f"(minutes)")
         epoch += 1
@@ -136,6 +147,8 @@ def train_for_n_minutes(n, net, loss_fn, optimizer):
         test_error.append(t_error)
         print('epoch ', epoch, i, ' complete.')
         print("<==========================================================>")
+        if running_loss < 0.3:
+          break
     print('Finished Training')
     plot_error_rates(training_error, test_error)
 
@@ -165,13 +178,14 @@ def test(net):
     return 1 - (correct / total)
 
 if __name__ == "__main__":
+    learning_rate = 0.0001
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
     device1 = torch.device('cpu')
     print('Device:', device)
 
     net = Net().to(device)
     #optimizer = SGD(net.parameters(), lr=0.0001, momentum=0.9)
-    optimizer = Adam(net.parameters(), lr=0.0001)
-    train_for_n_minutes(20, net, loss_fn=nn.CrossEntropyLoss(),
+    optimizer = Adam(net.parameters(), lr=learning_rate)
+    train_for_n_minutes(35, net, loss_fn=nn.CrossEntropyLoss(),
                        optimizer=optimizer)
     test(net)
