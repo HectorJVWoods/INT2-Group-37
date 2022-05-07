@@ -109,7 +109,7 @@ def train_for_n_minutes(n, net, loss_fn, optimizer):
     training_error = []
     test_error = []
     while end_time - time.time() > 0:
-        print(f"Time elapsed: {math.floor((time.time() - start_time) / 60)}/{math.floor((end_time - start_time) / 60)} "
+        print(f"Time elapsed: {((time.time() - start_time) / 60):3f}/{((end_time - start_time) / 60):3f} "
               f"(minutes)")
         epoch += 1
         running_loss = 0
@@ -171,6 +171,6 @@ if __name__ == "__main__":
     print('Device:', device)
 
     net = Net().to(device)
-    train_for_n_minutes(1, net, loss_fn=nn.CrossEntropyLoss(),
+    train_for_n_minutes(0.5, net, loss_fn=nn.CrossEntropyLoss(),
                         optimizer=torch.optim.Adam(lr=0.001, params=net.parameters()))
     test(net)
