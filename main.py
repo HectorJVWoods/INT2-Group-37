@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 from matplotlib import pyplot as plt
 from torch.optim import SGD
+from torch.optim import Adam
 import torchvision
 import torchvision.transforms as transforms
 import time
@@ -22,7 +23,7 @@ transform = transforms.Compose(
 already_downloaded = False
 
 training_batch = 16
-test_batch = 1000
+test_batch = 2000
 training_data = torchvision.datasets.CIFAR10(root='./data',
                                              train=True,
                                              download=not already_downloaded,
@@ -43,13 +44,16 @@ test_loader = torch.utils.data.DataLoader(test_data,
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Conv2d(in_channels=3, out_channels=32, kernel_size=3, padding=1)
-        self.layer2 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, padding=1)
+        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.layer3 = nn.Conv2d(in_channels=64,out_channels=128,kernel_size=3, padding = 1)         
-        self.layer4 = nn.Linear(128 * 8 * 8, 1024)
-        self.layer5 = nn.Linear(1024, 256)
-        self.layer6 = nn.Linear(256, 10)
+        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.layer3 = nn.Conv2d(in_channels=128,out_channels=256,kernel_size=3, padding=1) 
+        self.pool = nn.MaxPool2d(2, 2)
+        self.layer4 = nn.Conv2d(in_channels=256,out_channels=512,kernel_size=3,padding=1)
+        self.layer5 = nn.Linear(512 * 8 * 8, 128)
+        self.layer6 = nn.Linear(128, 64)
+        self.layer7 = nn.Linear(64, 10)
         self.dropout = nn.Dropout(0.25)
 
     def forward(self, x):
@@ -61,13 +65,15 @@ class Net(nn.Module):
         x = self.pool(x)
         x = self.layer3(x)
         x = F.relu(x)
-        x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = self.layer4(x)
         x = F.relu(x)
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = self.layer5(x)
         x = F.relu(x)
-        x = self.dropout(x)
         x = self.layer6(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        x = self.layer7(x)
         return x
 
 def train(epochs, net, test_every_epoch, loss_fn, optimizer):
@@ -164,6 +170,8 @@ if __name__ == "__main__":
     print('Device:', device)
 
     net = Net().to(device)
-    train_for_n_minutes(60, net, loss_fn=nn.CrossEntropyLoss(),
-                        optimizer = SGD(net.parameters(), lr=0.01, momentum=0.9))
+    #optimizer = SGD(net.parameters(), lr=0.0001, momentum=0.9)
+    optimizer = Adam(net.parameters(), lr=0.0001)
+    train_for_n_minutes(20, net, loss_fn=nn.CrossEntropyLoss(),
+                       optimizer=optimizer)
     test(net)
