@@ -65,12 +65,12 @@ test_loader = torch.utils.data.DataLoader(test_data,
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
-        self.layer3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)
-        self.layer4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)
-        self.layer5 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
+        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1) #3 * 32 * 32 -> 64 * 30 * 30 
+        self.pool = nn.MaxPool2d(2, 2) #64*30*30 -> 64*15*15
+        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)#64*15*15 -> 128*12*12
+        self.layer3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)#128*12*12 -> 256 * 10 * 10
+        self.layer4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)#256 *10 * 10 -> 512 * 8 * 8
+        self.layer5 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)#512 * 8 * 8 -> 512 * 6 * 6
         self.layer6 = nn.Linear(8192, 128)
         self.layer7 = nn.Linear(128, 64)
         self.layer8 = nn.Linear(64, 10)
@@ -96,6 +96,7 @@ class Net(nn.Module):
         x = self.batchnorm3(x)
         x = self.layer4(x)
         x = F.relu(x)
+        x = self.dropout(x)
         x = self.batchnorm4(x)
         x = self.layer5(x)
         x = F.relu(x)
@@ -114,6 +115,7 @@ class Net(nn.Module):
         x = F.relu(x)
         x = self.layer8(x)
         return x
+
 
 def save_model(path, net_state):
     torch.save(net_state, path)
