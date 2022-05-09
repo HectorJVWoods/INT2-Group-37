@@ -171,7 +171,7 @@ def train_for_n_hours(n, net, loss_fn, optimizer, file_path):
 
 
 def optimize_learning_rates(mins_per_train_cycle, file_path, loss_fn, optim):
-    learning_rates = [0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
+    learning_rates = [ 0.005, 0.001, 0.0005, 0.0001, 0.00005, 0.00001]
     best_params = None
     lowest_error = math.inf
     test_errors = []
@@ -212,7 +212,7 @@ def test(net):
             _, predicted = torch.max(outputs.data, 1)
             total += y.size(0)
             correct += (predicted == y).sum().item()
-    print(f'Network accuracy on {total} test images: {100 * correct // total} %')
+    print(f'Network accuracy on {total} test images: {100 * correct / total:.3f} %')
     return 1 - (correct / total)
 
 
@@ -221,12 +221,10 @@ if __name__ == "__main__":
     device1 = torch.device('cpu')
     print('Device:', device)
 
-    net = Net().to(device)
-    # net = load_model("model1").to(device)
-    train_for_n_minutes(90, net, loss_fn=nn.CrossEntropyLoss(),
+    #net = Net().to(device)
+    net = load_model("model1").to(device)
+    train_for_n_minutes(1, net, loss_fn=nn.CrossEntropyLoss(),
                         optimizer=torch.optim.Adam(lr=0.0005, params=net.parameters()), file_path="model1",
                         show_graph=True)
 
     # optimize_learning_rates(45, "model2", nn.CrossEntropyLoss, torch.optim.Adam)
-    net = load_model("model2").to(device)
-    test(net)
