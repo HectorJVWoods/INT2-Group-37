@@ -65,16 +65,22 @@ test_loader = torch.utils.data.DataLoader(test_data,
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
-        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1) #3 * 32 * 32 -> 64 * 30 * 30 
-        self.pool = nn.MaxPool2d(2, 2) #64*30*30 -> 64*15*15
-        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)#64*15*15 -> 128*12*12
-        self.layer3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)#128*12*12 -> 256 * 10 * 10
-        self.layer4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)#256 *10 * 10 -> 512 * 8 * 8
-        self.layer5 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)#512 * 8 * 8 -> 512 * 6 * 6
+        self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
+        self.layer1_2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
+        self.layer2_2 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1)
+        self.layer3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)
+        self.layer3_2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        self.layer3_3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
+        self.layer4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)
+        self.layer4_2 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
+        self.layer4_3 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
+        self.layer5 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
         self.layer6 = nn.Linear(8192, 128)
         self.layer7 = nn.Linear(128, 64)
         self.layer8 = nn.Linear(64, 10)
-        self.dropout = nn.Dropout(0.15)
+        self.dropout = nn.Dropout(0.25)
         self.batchnorm1 = nn.BatchNorm2d(64)
         self.batchnorm2 = nn.BatchNorm2d(128)
         self.batchnorm3 = nn.BatchNorm2d(256)
@@ -86,17 +92,38 @@ class Net(nn.Module):
         x = self.batchnorm1(x)
         x = self.pool(x)
         x = self.dropout(x)
+        x = self.layer1_2(x)
+        x = F.relu(x)
+        x = self.batchnorm1(x)
+        x = self.dropout(x)
         x = self.layer2(x)
         x = F.relu(x)
         x = self.batchnorm2(x)
         x = self.pool(x)
         x = self.dropout(x)
+        x = self.layer2_2(x)
+        x = F.relu(x)
+        x = self.batchnorm2(x)
+        x = self.dropout(x)
         x = self.layer3(x)
         x = F.relu(x)
         x = self.batchnorm3(x)
+        x = self.layer3_2(x)
+        x = F.relu(x)
+        x = self.batchnorm3(x)
+        x = self.dropout(x)
+        x = self.layer3_3(x)
+        x = F.relu(x)
+        x = self.batchnorm3(x)
+        x = self.dropout(x)
         x = self.layer4(x)
         x = F.relu(x)
-        x = self.dropout(x)
+        x = self.batchnorm4(x)
+        x = self.layer4_2(x)
+        x = F.relu(x)
+        x = self.batchnorm4(x)
+        x = self.layer4_3(x)
+        x = F.relu(x)
         x = self.batchnorm4(x)
         x = self.layer5(x)
         x = F.relu(x)
@@ -127,7 +154,7 @@ def load_model(path):
     return loaded_net
 
 
-def train_for_n_minutes(n, net, loss_fn, optimizer, file_path):
+def train_for_n_minutes(n, net, loss_fn, optimizer, file_path, show_graph):
     start_time = time.time()
     end_time = time.time() + (n * 60)
     epoch = 0
@@ -168,10 +195,12 @@ def train_for_n_minutes(n, net, loss_fn, optimizer, file_path):
         print("<==========================================================>")
     print('Finished Training')
     print(
-        f"Best parameters were at epoch {best_epoch}, With test error rate {lowest_error}. Saving these parameters to {file_path}")
-    save_model(file_path, best_params_so_far)
-    plot_error_rates(training_error, test_error)
-
+        f"Best parameters were at epoch {best_epoch}, With test error rate {lowest_error}.")
+    if show_graph:
+        print(f"Saving these parameters to {file_path}")
+        save_model(file_path, best_params_so_far)
+        plot_error_rates(training_error, test_error)
+    return best_params_so_far, lowest_error, best_epoch, training_error, test_error
 
 
 def plot_error_rates(training_error, test_error):
@@ -182,8 +211,102 @@ def plot_error_rates(training_error, test_error):
     plt.show()
 
 
+def plot_multiple_error_rates(tr_errors, te_errors, labels, label_name):
+    if len(tr_errors) != len(te_errors) or len(tr_errors) != len(labels):
+        print("Dim. are not the same size!")
+        return
+    for i in range(len(tr_errors)):
+        training_error = tr_errors[i]
+        test_error = te_errors[i]
+        l = labels[i]
+        x = [x for x in range(len(training_error))]
+        plt.plot(x, training_error, label="train (" + label_name + "=" + str(l) + ")")
+        plt.plot(x, test_error, label="test (" + label_name + "=" + str(l) + ")")
+    plt.legend()
+    plt.show()
+
+
 def train_for_n_hours(n, net, loss_fn, optimizer, file_path):
     train_for_n_minutes(n * 60, net, loss_fn, optimizer, file_path)
+
+
+def optimize_batches(mins_per_train_cycle, file_path, loss_fn, optim, learn_rate):
+    global train_loader, test_loader
+    batch_sizes = [8, 16, 32, 64, 128, 256, 512, 1024]
+    best_params = None
+    lowest_error = math.inf
+    test_errors = []
+    test_graphs = []
+    train_graphs = []
+    best_epoch = -1
+    best_bs = None
+    for BS in batch_sizes:
+        print("----------------------------------")
+        print("----------------------------------")
+        print(f"Trying batch size: {BS}")
+        print("----------------------------------")
+        print("----------------------------------")
+        train_loader, test_loader = init_data_sets(train_batch_size=BS, test_batch_size=1000)
+        t_net = Net().to(device)
+        params, test_error, epoch, train_graph, test_graph = train_for_n_minutes(
+            mins_per_train_cycle, t_net, loss_fn(), optim(lr=learn_rate, params=t_net.parameters()), "", False)
+        test_errors.append(test_error)
+        train_graphs.append(train_graph)
+        test_graphs.append(test_graph)
+        if test_error < lowest_error:
+            print("New record for test error!")
+            best_params = net.state_dict()
+            lowest_error = test_error
+            best_epoch = epoch
+            best_bs = BS
+    print("----------------------------------")
+    print("----------------------------------")
+    print(f"Optimization complete. The optimal batch size was {best_bs}, with a test error of {lowest_error}, "
+          f"at an optimal epoch of {best_epoch}")
+    print(f"Saving the best model to {file_path}")
+    print(test_errors)
+    save_model(file_path, best_params)
+    plot_multiple_error_rates(train_graphs, test_graphs, batch_sizes, "bs")
+    return best_bs, best_params
+
+
+def optimize_learning_rates(mins_per_train_cycle, file_path, loss_fn, optim):
+    #learning_rates = [0.005, 0.001, 0.0005]
+    learning_rates = [0.005, 0.001, 0.0005, 0.0001, 0.00005, 0.00001]
+    best_params = None
+    lowest_error = math.inf
+    test_errors = []
+    test_graphs = []
+    train_graphs = []
+    best_epoch = -1
+    best_lr = None
+    for LR in learning_rates:
+        print("----------------------------------")
+        print("----------------------------------")
+        print(f"Trying learning rate: {LR}")
+        print("----------------------------------")
+        print("----------------------------------")
+        t_net = Net().to(device)
+        params, test_error, epoch, train_graph, test_graph = train_for_n_minutes(
+            mins_per_train_cycle, t_net, loss_fn(), optim(lr=LR, params=t_net.parameters()), "", False)
+        test_errors.append(test_error)
+        train_graphs.append(train_graph)
+        test_graphs.append(test_graph)
+        if test_error < lowest_error:
+            print("New record for test error!")
+            best_params = net.state_dict()
+            lowest_error = test_error
+            best_epoch = epoch
+            best_lr = LR
+    print("----------------------------------")
+    print("----------------------------------")
+    print(f"Optimization complete. The optimal learning rate was {best_lr}, with a test error of {lowest_error}, "
+          f"at an optimal epoch of {best_epoch}")
+    print(f"Saving the best model to {file_path}")
+    print(test_errors)
+    save_model(file_path, best_params)
+    plot_multiple_error_rates(train_graphs, test_graphs, learning_rates, "lr")
+    return best_lr, best_params
 
 
 def test(net):
@@ -196,7 +319,7 @@ def test(net):
             _, predicted = torch.max(outputs.data, 1)
             total += y.size(0)
             correct += (predicted == y).sum().item()
-    print(f'Network accuracy on {total} test images: {(100 * correct / total):.2f} %')
+    print(f'Network accuracy on {total} test images: {100 * correct / total:.3f} %')
     return 1 - (correct / total)
 
 
@@ -206,7 +329,9 @@ if __name__ == "__main__":
     print('Device:', device)
 
     net = Net().to(device)
-    #net = load_model("model1").to(device)
-    train_for_n_minutes(20, net, loss_fn=nn.CrossEntropyLoss(),
-                      optimizer=torch.optim.Adam(lr=0.001, params=net.parameters()), file_path="model1")
-    test(net)
+    # net = load_model("model1").to(device)
+    train_for_n_minutes(60, net, loss_fn=nn.CrossEntropyLoss(),
+                        optimizer=torch.optim.Adam(lr=0.0005, params=net.parameters()), file_path="model1",
+                        show_graph=True)
+
+   # optimize_batches(20, "model2", nn.CrossEntropyLoss, torch.optim.Adam, 0.0005)
