@@ -66,68 +66,38 @@ class Net(nn.Module):
     def __init__(self):
         super().__init__()
         self.layer1 = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, padding=1)
-        self.layer1_2 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
         self.layer2 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, padding=1)
-        self.layer2_2 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=3, padding=1)
         self.layer3 = nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, padding=1)
-        self.layer3_2 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
-        self.layer3_3 = nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, padding=1)
         self.layer4 = nn.Conv2d(in_channels=256, out_channels=512, kernel_size=3, padding=1)
-        self.layer4_2 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.layer4_3 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
         self.layer5 = nn.Conv2d(in_channels=512, out_channels=512, kernel_size=3, padding=1)
-        self.layer6 = nn.Linear(512, 128)
+        self.layer6 = nn.Linear(8192, 128)
         self.layer7 = nn.Linear(128, 64)
         self.layer8 = nn.Linear(64, 10)
-        self.dropout = nn.Dropout(0.25)
+        self.dropout = nn.Dropout(0.5)
         self.batchnorm1 = nn.BatchNorm2d(64)
         self.batchnorm2 = nn.BatchNorm2d(128)
         self.batchnorm3 = nn.BatchNorm2d(256)
         self.batchnorm4 = nn.BatchNorm2d(512)
         self.batchnorm5 = nn.BatchNorm2d(512)
-        self.softmax= nn.Softmax()
+        self.soft_max = nn.Softmax()
+
     def forward(self, x):
         x = self.layer1(x)
         x = self.batchnorm1(x)
         x = F.relu(x)
-        x = self.dropout(x)
-        x = self.layer1_2(x)
-        x = self.batchnorm1(x)
-        x = F.relu(x)
         x = self.pool(x)
-        x = self.dropout(x)
         x = self.layer2(x)
-        x = self.batchnorm2(x)
         x = F.relu(x)
-        x = self.dropout(x)
-        x = self.layer2_2(x)
-        x = self.batchnorm2(x)
-        x = F.relu(x)
-        x = self.pool(x)
         x = self.dropout(x)
         x = self.layer3(x)
         x = self.batchnorm3(x)
         x = F.relu(x)
-        x = self.layer3_2(x)
-        x = self.batchnorm3(x)
-        x = F.relu(x)
         x = self.dropout(x)
-        x = self.layer3_3(x)
-        x = self.batchnorm3(x)
-        x = F.relu(x)
         x = self.pool(x)
-        x = self.dropout(x)
         x = self.layer4(x)
         x = self.batchnorm4(x)
         x = F.relu(x)
-        x = self.layer4_2(x)
-        x = self.batchnorm4(x)
-        x = F.relu(x)
-        x = self.layer4_3(x)
-        x = self.batchnorm4(x)
-        x = F.relu(x)
-        x = self.pool(x)
         x = self.layer5(x)
         x = self.batchnorm5(x)
         x = F.relu(x)
@@ -144,7 +114,7 @@ class Net(nn.Module):
         x = self.layer7(x)
         x = F.relu(x)
         x = self.layer8(x)
-        x = self.softmax(x)
+        #x = self.soft_max(x)
         return x
 
 
@@ -159,10 +129,14 @@ def load_model(path):
 
 
 def train_for_n_minutes(n, net, loss_fn, optimizer, file_path, show_graph):
+    diff =  []
+    training_error = []
+    correct = 0
+    total = 0
     start_time = time.time()
     end_time = time.time() + (n * 60)
     epoch = 0
-    training_error = []
+    training_loss= []
     test_error = []
     best_params_so_far = net.state_dict()
     best_epoch = -1
@@ -183,19 +157,28 @@ def train_for_n_minutes(n, net, loss_fn, optimizer, file_path, show_graph):
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
+        for X, y in train_loader:
+            X, y = X.to(device), y.to(device)
+            outputs = net(X)
+            _, predicted = torch.max(outputs.data, 1)
+            total += y.size(0)
+            correct += (predicted == y).sum().item()
+        
         print("<==========================================================>")
-        print(f'{data_size * training_batch:5d} images processed with training loss: {running_loss / data_size:.3f}')
-        training_error.append(running_loss / data_size)
+        print(f'{i} images processed with training loss: {running_loss / data_size:.3f}')
+        training_loss.append(running_loss / data_size)
+        training_error.append(1-(correct/total))
         t_error = test(net)
-        print(f"test loss for epoch:{t_error:.3f}")
+        print(f'training accuracy:  {100*(correct/total)}%')
+        print(f"test loss for epoch:{t_error:.3f}") 
         test_error.append(t_error)
         if t_error < lowest_error:
             print("New record for test error.")
             best_params_so_far = net.state_dict()
             lowest_error = t_error
             best_epoch = epoch
-
-        print('epoch ', epoch, i, ' complete.')
+        diff.append((1-(correct/total))-t_error)
+        print('epoch ', epoch , ' complete.')
         print("<==========================================================>")
     print('Finished Training')
     print(
@@ -203,17 +186,18 @@ def train_for_n_minutes(n, net, loss_fn, optimizer, file_path, show_graph):
     if show_graph:
         print(f"Saving these parameters to {file_path}")
         save_model(file_path, best_params_so_far)
-        plot_error_rates(training_error, test_error)
+        plot_error_rates(training_error, test_error,diff)
     return best_params_so_far, lowest_error, best_epoch, training_error, test_error
 
 
-def plot_error_rates(training_error, test_error):
+def plot_error_rates(training_error, test_error,diff):
     x = [x for x in range(len(training_error))]
-    plt.plot(x, training_error, label="training error")
+    #plt.plot(x, training_loss, label="training loss")
     plt.plot(x, test_error, label="test error")
+    plt.plot(x, training_error, label="training error")
+    plt.plot(x, (diff), label = "test-training Difference")
     plt.legend()
     plt.show()
-
 
 def plot_multiple_error_rates(tr_errors, te_errors, labels, label_name):
     if len(tr_errors) != len(te_errors) or len(tr_errors) != len(labels):
@@ -316,6 +300,8 @@ def optimize_learning_rates(mins_per_train_cycle, file_path, loss_fn, optim):
 def test(net):
     correct = 0
     total = 0
+    biggest_f1 = (-math.inf)
+    best_f1 = None 
     with torch.no_grad():
         for X, y in test_loader:
             X, y = X.to(device), y.to(device)
@@ -323,8 +309,12 @@ def test(net):
             _, predicted = torch.max(outputs.data, 1)
             total += y.size(0)
             correct += (predicted == y).sum().item()
-    print(f'Network accuracy on {total} test images: {100 * correct / total:.3f} %')
-    print(f' F1: {F1(correct,(total-correct))}')
+    f1_score = F1(correct,(total-correct))
+    print(f'Network accuracy on {total} test images: {100 * correct / total:.2f} %')
+    print(f' F1: {f1_score:.3f}')
+    if f1_score > biggest_f1:
+      best_f1 = biggest_f1
+      print("New record F1!")
     return 1 - (correct / total)
 
 def F1(TP,FN):
@@ -339,8 +329,9 @@ if __name__ == "__main__":
 
     net = Net().to(device)
     # net = load_model("model1").to(device)
-    train_for_n_minutes(60, net, loss_fn=nn.CrossEntropyLoss(),
-                        optimizer=torch.optim.Adam(lr=0.0001, params=net.parameters()), file_path="model1",
+    train_for_n_minutes(5, net, loss_fn=nn.CrossEntropyLoss(),
+                        optimizer=SGD(net.parameters(), lr=0.01, momentum=0.9), file_path="model1",
                         show_graph=True)
-
+   #torch.optim.Adam(lr=0.0001, params=net.parameters())
+   #optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
    # optimize_batches(20, "model2", nn.CrossEntropyLoss, torch.optim.Adam, 0.0005)
