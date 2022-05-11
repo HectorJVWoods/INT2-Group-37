@@ -161,7 +161,7 @@ def train_for_n_minutes(n, net, loss_fn, optimizer, file_path, show_graph):
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
         print("<==========================================================>")
-        print(f'{i} images processed with training loss: {running_loss / data_size:.3f}')
+        print(f'{data_size * training_batch:5d}  images processed with training loss: {running_loss / data_size:.3f}')
         training_loss.append(running_loss / data_size)
         training_error.append(1 - (correct / total))
         t_error, f1_score = test(net)
@@ -275,7 +275,7 @@ def optimize_learning_rates(mins_per_train_cycle, file_path, loss_fn, optim):
         print("----------------------------------")
         t_net = Net().to(device)
         params, test_error, epoch, train_graph, test_graph = train_for_n_minutes(
-            mins_per_train_cycle, t_net, loss_fn(), optim(lr=LR, params=t_net.parameters()), "", False)
+            mins_per_train_cycle, t_net, loss_fn(), optim(lr=LR, params=t_net.parameters(), momentum=0.9), "", False)
         test_errors.append(test_error)
         train_graphs.append(train_graph)
         test_graphs.append(test_graph)
@@ -325,9 +325,7 @@ if __name__ == "__main__":
 
     net = Net().to(device)
     # net = load_model("model1").to(device)
-    train_for_n_minutes(1, net, loss_fn=nn.CrossEntropyLoss(),
-                        optimizer=SGD(net.parameters(), lr=0.01, momentum=0.9), file_path="model1",
-                        show_graph=True)
-# torch.optim.Adam(lr=0.0001, params=net.parameters())
-# optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-# optimize_batches(20, "model2", nn.CrossEntropyLoss, torch.optim.Adam, 0.0005)
+    #train_for_n_hours(5, net, loss_fn=nn.CrossEntropyLoss(),
+    #                    optimizer=SGD(net.parameters(), lr=0.01, momentum=0.9), file_path="model1",
+     #                   show_graph=True)
+    optimize_learning_rates(mins_per_train_cycle=15,file_path="lr_optimized", loss_fn=nn.CrossEntropyLoss, optim=SGD)
