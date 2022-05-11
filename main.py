@@ -324,8 +324,13 @@ def test(net):
             total += y.size(0)
             correct += (predicted == y).sum().item()
     print(f'Network accuracy on {total} test images: {100 * correct / total:.3f} %')
+    print(f' F1: {F1(correct,(total-correct))}')
     return 1 - (correct / total)
 
+def F1(TP,FN):
+  precision = 1
+  recall = TP / (TP+FN)
+  return 2 * ((precision*recall)/(precision+recall))
 
 if __name__ == "__main__":
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
