@@ -9,6 +9,7 @@ import torchvision
 import torchvision.transforms as transforms
 import time
 import torch.nn.functional as F
+from sklearn.metrics import f1_score
 
 # normalize using 'zerocenter' normalization. i.e for each value do: (x-mean)/standard deviation
 # i.e the same method used to normalize the normal distribution.
@@ -28,7 +29,7 @@ classes = ('airplane', 'automobile', 'bird', 'cat', 'deer',
 # Set to true after running once; this suppreses those annoying "files already downloaded and verified" messages
 already_downloaded = True
 
-training_batch = 128
+training_batch = 256
 test_batch = 1000
 training_data = torchvision.datasets.CIFAR10(root='./data',
                                              train=True,
@@ -60,7 +61,7 @@ def init_data_sets(train_batch_size, test_batch_size):
     return train_d, test_d
 
 
-train_loader, test_loader = init_data_sets(train_batch_size=128, test_batch_size=1000)
+train_loader, test_loader = init_data_sets(train_batch_size=256, test_batch_size=1000)
 
 
 class Net(nn.Module):
@@ -81,33 +82,33 @@ class Net(nn.Module):
         self.batchnorm3 = nn.BatchNorm2d(256)
         self.batchnorm4 = nn.BatchNorm2d(512)
         self.batchnorm5 = nn.BatchNorm2d(512)
+        self.soft_max = nn.Softmax()
 
     def forward(self, x):
         x = self.layer1(x)
-        x = F.relu(x)
         x = self.batchnorm1(x)
+        x = F.relu(x)
         x = self.pool(x)
-        x = self.dropout(x)
         x = self.layer2(x)
         x = F.relu(x)
-        x = self.batchnorm2(x)
-        x = self.pool(x)
         x = self.dropout(x)
         x = self.layer3(x)
-        x = F.relu(x)
         x = self.batchnorm3(x)
+        x = F.relu(x)
+        x = self.dropout(x)
+        x = self.pool(x)
         x = self.layer4(x)
-        x = F.relu(x)
         x = self.batchnorm4(x)
-        x = self.layer5(x)
         x = F.relu(x)
-        x = self.batchnorm5(x)
         x = self.layer5(x)
-        x = F.relu(x)
         x = self.batchnorm5(x)
+        x = F.relu(x)
         x = self.layer5(x)
-        x = F.relu(x)
         x = self.batchnorm5(x)
+        x = F.relu(x)
+        x = self.layer5(x)
+        x = self.batchnorm5(x)
+        x = F.relu(x)
         x = self.pool(x)
         x = torch.flatten(x, 1)  # flatten all dimensions except batch
         x = self.layer6(x)
@@ -115,6 +116,7 @@ class Net(nn.Module):
         x = self.layer7(x)
         x = F.relu(x)
         x = self.layer8(x)
+        #x = self.soft_max(x)
         return x
 
 
@@ -302,10 +304,10 @@ if __name__ == "__main__":
     device1 = torch.device('cpu')
     print('Device:', device)
 
-    net = Net().to(device)
-    # net = load_model("model1").to(device)
-    #train_for_n_minutes(1, net, loss_fn=nn.CrossEntropyLoss(),
-    #                    optimizer=torch.optim.Adam(lr=0.0005, params=net.parameters()), file_path="model1",
-     #                   show_graph=True)
+    #net = Net().to(device)
+    net = load_model("model1").to(device)
+    train_for_n_minutes(30, net, loss_fn=nn.CrossEntropyLoss(),
+                        optimizer=torch.optim.Adam(lr=0.0005, params=net.parameters()), file_path="model1",
+                        show_graph=True)
 
-    optimize_batches(60, "model2", nn.CrossEntropyLoss, torch.optim.Adam, 0.0005)
+    #optimize_learning_rates(5, "model2", nn.CrossEntropyLoss, torch.optim.Adam)
