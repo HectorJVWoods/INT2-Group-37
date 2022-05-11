@@ -73,7 +73,7 @@ class Net(nn.Module):
         self.layer6 = nn.Linear(8192, 128)
         self.layer7 = nn.Linear(128, 64)
         self.layer8 = nn.Linear(64, 10)
-        self.dropout = nn.Dropout(0.5)
+        self.dropout = nn.Dropout(0.15)
         self.batchnorm1 = nn.BatchNorm2d(64)
         self.batchnorm2 = nn.BatchNorm2d(128)
         self.batchnorm3 = nn.BatchNorm2d(256)
